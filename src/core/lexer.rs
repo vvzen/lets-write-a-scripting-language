@@ -7,7 +7,6 @@ use crate::core::tokens::{Token, TokenType};
 lazy_static! {
 
     /// Characters considered valid to be used in identifiers
-    #[derive(Debug)]
     pub static ref LETTERS: Vec<char> = {
         let letters =
             // Extra supported chars
