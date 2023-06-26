@@ -19,12 +19,9 @@ lazy_static! {
 
         letters
     };
-
-    /// Characters that will be ignored when parsing (this ain't no python)
-    pub static ref WHITESPACE: Vec<char> = vec![
-        ' ', '\t', '\r', '\n',
-    ];
 }
+
+pub const WHITESPACE: [char; 4] = [' ', '\t', '\r', '\n'];
 
 /// Language reserved keywords
 pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
