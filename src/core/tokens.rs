@@ -11,7 +11,15 @@ pub enum TokenType {
 
     // Operators
     Assign,
+    Eq,
+    NotEq,
     Plus,
+    Minus,
+    Bang,
+    Asterisk,
+    Slash,
+    Lt,
+    Gt,
 
     // Delimiters
     Comma,
@@ -24,6 +32,11 @@ pub enum TokenType {
     // Keywords
     Function,
     Let,
+    True,
+    False,
+    If,
+    Else,
+    Return,
 }
 
 impl Display for TokenType {
@@ -35,15 +48,30 @@ impl Display for TokenType {
             Self::Ident => s = "IDENT",
             Self::Int => s = "int",
             Self::Assign => s = "=",
-            Self::Plus => s = "+",
             Self::Comma => s = ",",
             Self::Semicolon => s = ";",
             Self::LParen => s = "(",
             Self::RParen => s = ")",
             Self::LBrace => s = "{",
             Self::RBrace => s = "}",
-            Self::Function => s = "function",
+            // Operators
+            Self::Eq => s = "==",
+            Self::NotEq => s = "!=",
+            Self::Plus => s = "+",
+            Self::Minus => s = "-",
+            Self::Slash => s = "/",
+            Self::Gt => s = ">",
+            Self::Lt => s = "<",
+            Self::Bang => s = "!",
+            Self::Asterisk => s = "*",
+            // Keywords
+            Self::Function => s = "fn",
             Self::Let => s = "let",
+            Self::True => s = "true",
+            Self::False => s = "false",
+            Self::If => s = "if",
+            Self::Else => s = "else",
+            Self::Return => s = "return",
         }
         write!(f, "{s}")
     }

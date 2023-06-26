@@ -26,7 +26,12 @@ pub const WHITESPACE_CHARS: [char; 4] = [' ', '\t', '\r', '\n'];
 /// Language reserved keywords
 pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
     "fn" => TokenType::Function,
-    "let" => TokenType::Let
+    "let" => TokenType::Let,
+    "true" => TokenType::True,
+    "false" => TokenType::False,
+    "if" => TokenType::If,
+    "else" => TokenType::Else,
+    "return" => TokenType::Return,
 };
 
 pub struct Lexer<'a> {
@@ -77,18 +82,40 @@ impl Lexer<'_> {
             return self.read_number();
         }
 
+        let c = &self.char.to_string();
+
         // Any other token we support
         let token = match self.char {
-            '=' => Token::new(TokenType::Assign, &self.char.to_string()),
-            ',' => Token::new(TokenType::Comma, &self.char.to_string()),
-            '+' => Token::new(TokenType::Plus, &self.char.to_string()),
-            ';' => Token::new(TokenType::Semicolon, &self.char.to_string()),
-            '(' => Token::new(TokenType::LParen, &self.char.to_string()),
-            ')' => Token::new(TokenType::RParen, &self.char.to_string()),
-            '{' => Token::new(TokenType::LBrace, &self.char.to_string()),
-            '}' => Token::new(TokenType::RBrace, &self.char.to_string()),
+            ';' => Token::new(TokenType::Semicolon, c),
+            '=' => match self.peek_char() {
+                Some(next_c) if next_c == '=' => {
+                    self.read_char();
+                    Token::new(TokenType::Eq, "==")
+                }
+                None | Some(_) => Token::new(TokenType::Assign, c),
+            },
+            ',' => Token::new(TokenType::Comma, c),
+            '(' => Token::new(TokenType::LParen, c),
+            ')' => Token::new(TokenType::RParen, c),
+            '{' => Token::new(TokenType::LBrace, c),
+            '}' => Token::new(TokenType::RBrace, c),
+            // Operators
+            '+' => Token::new(TokenType::Plus, c),
+            '-' => Token::new(TokenType::Minus, c),
+            '!' => match self.peek_char() {
+                Some(next_c) if next_c == '=' => {
+                    self.read_char();
+                    Token::new(TokenType::NotEq, "!=")
+                }
+                None | Some(_) => Token::new(TokenType::Bang, c),
+            },
+            '<' => Token::new(TokenType::Lt, c),
+            '>' => Token::new(TokenType::Gt, c),
+            '/' => Token::new(TokenType::Slash, c),
+            '*' => Token::new(TokenType::Asterisk, c),
+            // Special
             '\0' => Token::new(TokenType::EOF, ""),
-            _ => Token::new(TokenType::Illegal, &self.char.to_string()),
+            _ => Token::new(TokenType::Illegal, c),
         };
 
         self.read_char();
@@ -137,6 +164,11 @@ impl Lexer<'_> {
 
         self.position = self.read_position;
         self.read_position += 1;
+    }
+
+    /// Peek at the next character without moving the cursor
+    pub fn peek_char(&mut self) -> Option<char> {
+        self.input.chars().nth(self.read_position)
     }
 }
 
