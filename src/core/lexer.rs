@@ -21,7 +21,7 @@ lazy_static! {
     };
 }
 
-pub const WHITESPACE: [char; 4] = [' ', '\t', '\r', '\n'];
+pub const WHITESPACE_CHARS: [char; 4] = [' ', '\t', '\r', '\n'];
 
 /// Language reserved keywords
 pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
@@ -58,7 +58,7 @@ impl Lexer<'_> {
     }
 
     fn skip_whitspace(&mut self) {
-        while WHITESPACE.contains(&self.char) {
+        while WHITESPACE_CHARS.contains(&self.char) {
             self.read_char();
         }
     }
