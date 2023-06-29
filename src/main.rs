@@ -2,20 +2,36 @@ use color_eyre::eyre;
 
 mod core;
 
-fn main() -> eyre::Result<()> {
-    let text = "let a = 5;";
-    let mut lexer = core::lexer::Lexer::new(text)?;
-
-    eprintln!("First char read: {}", lexer.char);
+fn repl() -> eyre::Result<()> {
+    eprintln!("Welcome to vvlang!");
 
     loop {
-        let token = lexer.next_token();
-        eprintln!("Token: {token:?}");
+        eprint!(">>> ");
 
-        if token.r#type == core::tokens::TokenType::EOF {
+        let mut user_input = String::new();
+        std::io::stdin().read_line(&mut user_input)?;
+
+        if &user_input == "exit()\n" {
+            eprintln!("Exiting..");
             break;
+        }
+
+        let mut lexer = core::lexer::Lexer::new(&user_input)?;
+
+        loop {
+            let token = lexer.next_token();
+            println!("{token:?}");
+
+            if token.r#type == core::tokens::TokenType::EOF {
+                break;
+            }
         }
     }
 
+    Ok(())
+}
+
+fn main() -> eyre::Result<()> {
+    repl()?;
     Ok(())
 }
