@@ -2,6 +2,8 @@ use color_eyre::eyre;
 
 mod core;
 
+/// Start a REPL that prints back the result
+/// of tokenizing what the user has typed.
 fn repl() -> eyre::Result<()> {
     eprintln!("Welcome to vvlang!");
 
