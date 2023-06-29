@@ -28,7 +28,7 @@ fn test_new_error() {
         Token::new(TokenType::Comma, ","),
         Token::new(TokenType::Semicolon, ";"),
         Token::new(TokenType::EOF, ""),
-])]
+]; "Test for operators and parenthesis")]
 fn test_next_token(input: &str, expected_results: Vec<Token>) {
     let mut lexer = Lexer::new(input).unwrap();
     for (i, expected_result) in expected_results.iter().enumerate() {
@@ -85,7 +85,7 @@ vec![
         Token::new(TokenType::RParen, ")"),
         Token::new(TokenType::Semicolon, ";"),
         Token::new(TokenType::EOF, ""),
-])]
+]; "Sample real usage of vvlang")]
 // Sample that contains also invalid code,
 // to test edge cases of the lexer.
 #[test_case(
@@ -183,7 +183,7 @@ vec![
     Token::new(TokenType::Int, "9"),
     Token::new(TokenType::Semicolon, ";"),
     Token::new(TokenType::EOF, ""),
-])]
+]; "Sample advanced vvlang usage")]
 fn test_next_token_more_complex_string(input: &str, expected_results: Vec<Token>) {
     let mut lexer = Lexer::new(input).unwrap();
     for (i, expected_token) in expected_results.iter().enumerate() {
