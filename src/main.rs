@@ -34,6 +34,11 @@ fn repl() -> eyre::Result<()> {
 }
 
 fn main() -> eyre::Result<()> {
-    repl()?;
+    // repl()?;
+    use crate::core::parser::Parser;
+    let text = "let x = 5;";
+
+    let mut parser = Parser::new(text)?;
+    parser.parse_program();
     Ok(())
 }

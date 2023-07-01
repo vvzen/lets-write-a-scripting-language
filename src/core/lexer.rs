@@ -34,9 +34,9 @@ pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
     "return" => TokenType::Return,
 };
 
-pub struct Lexer<'a> {
+pub struct Lexer {
     /// Text to lex
-    input: &'a str,
+    input: String,
     /// Current position in ``input``, points to the current char
     position: usize,
     /// Current reading position in ``input``, after the current char
@@ -45,7 +45,7 @@ pub struct Lexer<'a> {
     pub r#char: char,
 }
 
-impl Lexer<'_> {
+impl Lexer {
     pub fn new(text: &str) -> eyre::Result<Lexer> {
         let first_char = match text.chars().nth(0) {
             Some(c) => c,
@@ -55,7 +55,7 @@ impl Lexer<'_> {
         };
 
         Ok(Lexer {
-            input: text,
+            input: text.to_owned(),
             position: 0,
             read_position: 1,
             r#char: first_char,
