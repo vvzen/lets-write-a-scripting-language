@@ -37,6 +37,9 @@ pub enum TokenType {
     If,
     Else,
     Return,
+
+    // No-ops
+    NewLine,
 }
 
 impl Display for TokenType {
@@ -72,6 +75,8 @@ impl Display for TokenType {
             Self::If => s = "if",
             Self::Else => s = "else",
             Self::Return => s = "return",
+            // No-op
+            Self::NewLine => s = "\n",
         }
         write!(f, "{s}")
     }

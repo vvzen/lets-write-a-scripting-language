@@ -21,7 +21,7 @@ lazy_static! {
     };
 }
 
-pub const WHITESPACE_CHARS: [char; 4] = [' ', '\t', '\r', '\n'];
+pub const WHITESPACE_CHARS: [char; 2] = [' ', '\t'];
 
 /// Language reserved keywords
 pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
@@ -115,6 +115,17 @@ impl Lexer {
             '*' => Token::new(TokenType::Asterisk, c),
             // Special
             '\0' => Token::new(TokenType::EOF, ""),
+            // Newlines
+            // - Unix-style
+            '\n' => Token::new(TokenType::NewLine, "\n"),
+            // - Windows-style
+            '\r' => match self.peek_char() {
+                Some(next_c) if next_c == '\n' => {
+                    self.read_char();
+                    Token::new(TokenType::NewLine, "\r\n")
+                }
+                None | Some(_) => Token::new(TokenType::Illegal, c),
+            },
             _ => Token::new(TokenType::Illegal, c),
         };
 
