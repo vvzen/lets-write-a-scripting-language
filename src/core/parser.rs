@@ -1,71 +1,127 @@
-use std::any::Any;
+use std::cell::RefCell;
+use std::fmt::Display;
 
-use super::lexer::Lexer;
-use crate::core::{
-    parser::ast::{Identifier, LetStatement},
-    tokens::{Token, TokenType},
-};
+use color_eyre::eyre;
+
+use crate::core::lexer::Lexer;
+use crate::core::tokens::{Token, TokenType};
 
 mod ast {
 
     use super::*;
 
-    pub enum NodeType {
-        Statement,
-        Expression,
-    }
-
-    /// A node composing our Abstract Syntax Tree.
-    pub trait Node {
-        fn token_literal(&self) -> String;
-        fn ast_node_type(&self) -> NodeType;
-    }
-
-    /// A let statement of the form:
+    #[derive(Debug, PartialEq, Clone)]
+    /// A 'let' assignment of the form:
     /// let <identifier> = <expression>;
     /// EG:
     ///   let x = 5;
     ///   let x = add(5 + 5);
     pub struct LetStatement {
-        token: Token,
-        name: Identifier,
-        expression: String,
+        pub token: Token,
+        pub identifier: Identifier,
+        pub value: RefCell<Expression>,
     }
 
-    /// Represents the binding of a variable
+    /// Represents the binding of a variable.
+    #[derive(Debug, PartialEq, Clone)]
     pub struct Identifier {
-        token: Token,
-        value: String,
+        /// The name of the variable.
+        /// EG: let x = 10; -> 'x'
+        pub name: String,
     }
 
-    impl Node for LetStatement {
-        fn token_literal(&self) -> String {
-            self.token.literal.to_owned()
-        }
+    /// Anything that returns a value.
+    /// EG:
+    ///   5;
+    ///   2+2;
+    ///   add(1, 2);
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct Expression {
+        pub token: Token,
+    }
 
-        fn ast_node_type(&self) -> NodeType {
-            return NodeType::Statement;
+    impl Expression {
+        /// TODO: Compute the value that the expression should return ?
+        pub fn compute(&self) -> String {
+            todo!();
+        }
+    }
+
+    /// Using the jergon of the Book, a 'Statement' is basically a
+    /// single node of the Abtract Syntax Tree.
+    /// We support 2 main types of Statements:
+    /// A 'let' assignment and a simple Expression.
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Statement {
+        Assignment(LetStatement),
+        SingleExpression(Expression),
+    }
+
+    impl Statement {
+        fn token_literal(&self) -> String {
+            match self {
+                Statement::Assignment(let_statement) => {
+                    //
+                    let_statement.token.literal.to_owned()
+                }
+                Statement::SingleExpression(expression) => {
+                    //
+                    expression.token.literal.to_owned()
+                }
+            }
+        }
+    }
+
+    impl Display for Statement {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let s = match self {
+                Statement::Assignment(let_statement) => {
+                    //
+                    let exp = &let_statement.clone().value.into_inner();
+                    format!("let {} = {}", self.token_literal(), &exp.token.literal)
+                }
+                Statement::SingleExpression(_) => {
+                    //
+                    self.token_literal()
+                }
+            };
+
+            write!(f, "{s}")
         }
     }
 
     pub struct Program {
-        pub nodes: Vec<Box<dyn Node>>,
+        pub statements: Vec<Statement>,
     }
 
     impl Program {
         pub fn new() -> Program {
-            Program { nodes: Vec::new() }
+            Program {
+                statements: Vec::new(),
+            }
         }
 
         fn token_literal(&self) -> String {
-            match self.nodes.get(0) {
-                Some(node) => {
-                    return node.token_literal();
-                }
-                None => {
-                    return String::new();
-                }
+            match self.statements.get(0) {
+                Some(statement) => statement.token_literal(),
+                None => String::new(),
             }
+        }
+    }
+}
+
+pub struct ParserError {
+    pub message: String,
+    pub line_num: usize,
+    pub char_offset: usize,
+}
+
+impl ParserError {
+    fn new(message: &str, line_num: usize, char_offset: usize) -> ParserError {
+        ParserError {
+            message: message.to_owned(),
+            line_num,
+            char_offset,
         }
     }
 }
@@ -74,18 +130,8 @@ pub struct Parser {
     lexer: Lexer,
     current_token: Token,
     peek_token: Token,
-}
-
-fn parse_let_statement() -> Box<dyn ast::Node> {
-    todo!();
-}
-
-fn parse_return_statement() -> Box<dyn ast::Node> {
-    todo!();
-}
-
-fn parse_if_statement() -> Box<dyn ast::Node> {
-    todo!();
+    /// Errors that we encountered while parsing the program.
+    pub errors: Vec<ParserError>,
 }
 
 impl Parser {
@@ -98,17 +144,22 @@ impl Parser {
             lexer,
             current_token: first_token,
             peek_token: second_token,
+            errors: Vec::new(),
         })
     }
 
     /// Read the next token
     fn next_token(&mut self) {
-        self.current_token = self.lexer.next_token();
+        self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
     }
 
+    /// Parse the text given in input (consuming it) and return
+    /// the whole program.
     pub fn parse_program(&mut self) -> ast::Program {
         let mut program = ast::Program::new();
+
+        let mut line_num = 1;
 
         loop {
             eprintln!("Current token: {:?}", self.current_token);
@@ -119,20 +170,123 @@ impl Parser {
                 break;
             }
 
-            let statement = match self.current_token.r#type {
-                TokenType::Let => parse_let_statement(),
-                TokenType::If => parse_if_statement(),
+            let mut statement: Option<ast::Statement> = None;
+            match self.current_token.r#type {
+                // Newlines have no syntactical meaning, but are useful to keep
+                // track of where we are in the source code so that we can emit
+                // better error messages.
+                TokenType::NewLine => {
+                    line_num += 1;
+                }
+                TokenType::Let => match self.parse_let_statement() {
+                    Ok(s) => {
+                        statement = Some(s);
+                    }
+                    Err(e) => {
+                        let error_message = format!("{e}");
+                        let error = ParserError::new(&error_message, line_num, 0);
+                        self.errors.push(error);
+                    }
+                },
+                TokenType::If => {
+                    statement = Some(self.parse_if_statement());
+                }
+                TokenType::Return => {
+                    statement = Some(self.parse_return_statement());
+                }
                 _ => {
-                    //
-                    parse_let_statement()
+                    // FIXME: Test this out
+                    let error_message =
+                        format!("Unsupported token: '{}'", self.current_token.literal);
+                    let error = ParserError::new(&error_message, line_num, 0);
+                    self.errors.push(error);
                 }
             };
 
-            program.nodes.push(statement);
+            match statement {
+                Some(s) => {
+                    eprintln!("Current statement: '{s}'");
+                    program.statements.push(s);
+                }
+                None => {
+                    eprintln!("No statement found");
+                }
+            }
+
             self.next_token();
         }
 
         program
+    }
+
+    fn parse_if_statement(&mut self) -> ast::Statement {
+        todo!();
+    }
+
+    fn parse_let_statement(&mut self) -> eyre::Result<ast::Statement> {
+        // The next token should be the identifier name
+        // TODO: At some point I might need to implement a custom error type
+        if !self.next_token_is_of_type(TokenType::Ident) {
+            return Err(eyre::eyre!(
+                "Expected identifier, found '{}'",
+                self.peek_token.literal
+            ));
+        }
+
+        // Advance, so we can parse the identifier
+        self.next_token();
+        let identifier = ast::Identifier {
+            name: self.current_token.literal.to_owned(),
+        };
+
+        let let_statement_token = self.current_token.clone();
+
+        // After the identifier there should be an '=' sign
+        if !self.next_token_is_of_type(TokenType::Assign) {
+            return Err(eyre::eyre!(
+                "Expected '=' operator, found {}",
+                self.peek_token.literal
+            ));
+        }
+        self.next_token();
+
+        // After the '=' there should be an expression
+        // FIXME: this is just a placeholder
+        let mut exp_literals: Vec<String> = vec![];
+
+        // For now, we consume everything until we reach a semicolon
+        // This means we're skipping expressions
+        while !self.current_token_is_of_type(TokenType::Semicolon) {
+            exp_literals.push(self.peek_token.literal.to_owned());
+            self.next_token();
+        }
+
+        let exp_token = Token {
+            r#type: TokenType::Illegal,
+            literal: exp_literals.join(" "),
+        };
+
+        let expression = ast::Expression { token: exp_token };
+
+        let statement = ast::LetStatement {
+            token: let_statement_token,
+            identifier,
+            value: RefCell::new(expression),
+        };
+
+        Ok(ast::Statement::Assignment(statement))
+    }
+
+    fn parse_return_statement(&mut self) -> ast::Statement {
+        todo!();
+    }
+
+    fn current_token_is_of_type(&self, t: TokenType) -> bool {
+        self.current_token.r#type == t
+    }
+
+    fn next_token_is_of_type(&self, t: TokenType) -> bool {
+        self.peek_token.r#type == t
     }
 }
 
