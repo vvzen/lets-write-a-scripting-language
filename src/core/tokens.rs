@@ -37,6 +37,9 @@ pub enum TokenType {
     If,
     Else,
     Return,
+
+    // No-ops
+    NewLine,
 }
 
 impl Display for TokenType {
@@ -72,12 +75,14 @@ impl Display for TokenType {
             Self::If => s = "if",
             Self::Else => s = "else",
             Self::Return => s = "return",
+            // No-op
+            Self::NewLine => s = "\n",
         }
         write!(f, "{s}")
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub r#type: TokenType,
     pub literal: String,

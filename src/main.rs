@@ -1,3 +1,5 @@
+#![feature(type_name_of_val)]
+
 use color_eyre::eyre;
 
 mod core;
@@ -17,7 +19,6 @@ fn repl() -> eyre::Result<()> {
             eprintln!("Exiting..");
             break;
         }
-
         let mut lexer = core::lexer::Lexer::new(&user_input)?;
 
         loop {
@@ -34,6 +35,18 @@ fn repl() -> eyre::Result<()> {
 }
 
 fn main() -> eyre::Result<()> {
-    repl()?;
+    // repl()?;
+    use crate::core::parser::Parser;
+    let text = "
+    let something = 5;
+    return 10;
+    5;";
+
+    let mut parser = Parser::new(text)?;
+    parser.parse_program();
+    parser.report_errors();
+
+    eprintln!("");
+
     Ok(())
 }
