@@ -134,6 +134,7 @@ mod ast {
             }
         }
 
+        // FIXME: what needs this?
         fn token_literal(&self) -> String {
             match self.statements.get(0) {
                 Some(statement) => statement.token_literal(),
@@ -211,8 +212,8 @@ impl Parser {
         let mut line_num = 1;
 
         loop {
-            eprintln!("Current token: {:?}", self.current_token);
-            eprintln!("Peek token: {:?}", self.peek_token);
+            // eprintln!("Current token: {:?}", self.current_token);
+            // eprintln!("Peek token: {:?}", self.peek_token);
 
             // If there is nothing more to parse, exit
             if self.peek_token.r#type == TokenType::EOF {
@@ -223,7 +224,7 @@ impl Parser {
             match self.current_token.r#type {
                 // Newlines have no syntactical meaning, but are useful to keep
                 // track of where we are in the source code so that we can emit
-                // better error messages.
+                // precise error messages.
                 TokenType::NewLine => {
                     line_num += 1;
                 }
@@ -259,12 +260,11 @@ impl Parser {
 
             match statement {
                 Some(s) => {
-                    eprintln!("Current statement: '{s}'");
+                    let type_name = std::any::type_name_of_val(&s);
+                    eprintln!("Current statement: '{s}', type: {type_name}");
                     program.statements.push(s);
                 }
-                None => {
-                    eprintln!("No statement found");
-                }
+                None => {}
             }
 
             self.next_token();

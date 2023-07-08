@@ -1,4 +1,3 @@
-use crate::core::lexer::Lexer;
 use crate::core::parser::ast::Statement;
 use crate::core::parser::Parser;
 use crate::core::tokens::{Token, TokenType};
