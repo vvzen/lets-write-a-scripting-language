@@ -181,6 +181,22 @@ impl Parser {
         })
     }
 
+    pub fn report_errors(&self) {
+        if !self.errors.is_empty() {
+            let num_errors = self.errors.len();
+            eprintln!(
+                "\nFound {} error{} while parsing:",
+                num_errors,
+                if num_errors <= 1 { "" } else { "s" }
+            );
+
+            for error in self.errors.iter() {
+                eprint!("line {}; ", error.line_num);
+                eprintln!("{}", error.message);
+            }
+        }
+    }
+
     /// Read the next token
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();

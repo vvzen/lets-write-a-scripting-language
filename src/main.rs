@@ -35,20 +35,16 @@ fn repl() -> eyre::Result<()> {
 fn main() -> eyre::Result<()> {
     // repl()?;
     use crate::core::parser::Parser;
-    let text = "let something = 5;";
+    let text = "
+    let something = 5;
+    return 10;
+    5;";
 
     let mut parser = Parser::new(text)?;
     parser.parse_program();
+    parser.report_errors();
 
     eprintln!("");
-
-    if !parser.errors.is_empty() {
-        eprintln!("Found errors while parsing:");
-        for error in parser.errors.iter() {
-            eprint!("line {}; ", error.line_num);
-            eprintln!("{}", error.message);
-        }
-    }
 
     Ok(())
 }
