@@ -22,12 +22,33 @@ mod ast {
         pub value: RefCell<Expression>,
     }
 
+    /// A 'return' assignment of the form:
+    /// return <expression>;
+    /// EG:
+    ///   return 5;
+    ///   return add(5 + 5);
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct ReturnStatement {
+        pub token: Token,
+        pub value: RefCell<Expression>,
+    }
+
     /// Represents the binding of a variable.
     #[derive(Debug, PartialEq, Clone)]
     pub struct Identifier {
         /// The name of the variable.
         /// EG: let x = 10; -> 'x'
         pub name: String,
+    }
+
+    /// A statement consisting of a single expression.
+    /// EG:
+    ///   5;
+    ///   x + 10;
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct ExpressionStatement {
+        pub token: Token,
+        pub expression: Expression,
     }
 
     /// Anything that returns a value.
@@ -37,7 +58,8 @@ mod ast {
     ///   add(1, 2);
     #[derive(Debug, PartialEq, Clone)]
     pub struct Expression {
-        pub token: Token,
+        // pub token: Token,
+        pub tokens: Vec<Token>,
     }
 
     impl Expression {
@@ -45,29 +67,37 @@ mod ast {
         pub fn compute(&self) -> String {
             todo!();
         }
+
+        pub fn literal(&self) -> String {
+            let exp_literal = self
+                .tokens
+                .iter()
+                .filter(|&t| t.r#type != TokenType::Semicolon)
+                .map(|t| t.literal.clone())
+                .collect::<Vec<String>>()
+                .join(" ");
+
+            exp_literal
+        }
     }
 
     /// Using the jergon of the Book, a 'Statement' is basically a
     /// single node of the Abtract Syntax Tree.
-    /// We support 2 main types of Statements:
-    /// A 'let' assignment and a simple Expression.
+    /// We support 3 main types of Statements:
+    /// A 'let' assignment, a 'return' statement and a simple Expression.
     #[derive(Debug, Clone, PartialEq)]
     pub enum Statement {
         Assignment(LetStatement),
-        SingleExpression(Expression),
+        Return(ReturnStatement),
+        SingleExpression(ExpressionStatement),
     }
 
     impl Statement {
         fn token_literal(&self) -> String {
             match self {
-                Statement::Assignment(let_statement) => {
-                    //
-                    let_statement.token.literal.to_owned()
-                }
-                Statement::SingleExpression(expression) => {
-                    //
-                    expression.token.literal.to_owned()
-                }
+                Statement::Assignment(let_statement) => let_statement.token.literal.to_owned(),
+                Statement::Return(return_statement) => return_statement.token.literal.to_owned(),
+                Statement::SingleExpression(expression) => expression.token.literal.to_owned(),
             }
         }
     }
@@ -76,9 +106,12 @@ mod ast {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let s = match self {
                 Statement::Assignment(let_statement) => {
-                    //
                     let exp = &let_statement.clone().value.into_inner();
-                    format!("let {} = {}", self.token_literal(), &exp.token.literal)
+                    format!("let {} = {};", self.token_literal(), &exp.literal())
+                }
+                Statement::Return(return_statement) => {
+                    let exp = &return_statement.clone().value.into_inner();
+                    format!("return {};", &exp.literal())
                 }
                 Statement::SingleExpression(_) => {
                     //
@@ -191,9 +224,14 @@ impl Parser {
                 TokenType::If => {
                     statement = Some(self.parse_if_statement());
                 }
-                TokenType::Return => {
-                    statement = Some(self.parse_return_statement());
-                }
+                TokenType::Return => match self.parse_return_statement() {
+                    Ok(s) => statement = Some(s),
+                    Err(e) => {
+                        let error_message = format!("{e}");
+                        let error = ParserError::new(&error_message, line_num, 0);
+                        self.errors.push(error);
+                    }
+                },
                 _ => {
                     // FIXME: Test this out
                     let error_message =
@@ -259,14 +297,27 @@ impl Parser {
         while !self.current_token_is_of_type(TokenType::Semicolon) {
             exp_literals.push(self.peek_token.literal.to_owned());
             self.next_token();
+
+            if self.current_token_is_of_type(TokenType::EOF) {
+                return Err(eyre::eyre!("Expected ';', found end of file (EOF)"));
+            }
         }
+
+        let exp_literal = exp_literals
+            .iter()
+            .filter(|&s| s != ";")
+            .map(|s| s.clone())
+            .collect::<Vec<String>>()
+            .join(" ");
 
         let exp_token = Token {
             r#type: TokenType::Illegal,
-            literal: exp_literals.join(" "),
+            literal: exp_literal,
         };
 
-        let expression = ast::Expression { token: exp_token };
+        let expression = ast::Expression {
+            tokens: vec![exp_token],
+        };
 
         let statement = ast::LetStatement {
             token: let_statement_token,
@@ -277,8 +328,46 @@ impl Parser {
         Ok(ast::Statement::Assignment(statement))
     }
 
-    fn parse_return_statement(&mut self) -> ast::Statement {
-        todo!();
+    fn parse_return_statement(&mut self) -> eyre::Result<ast::Statement> {
+        // After the 'return' there should be an expression
+        // FIXME: this is just a placeholder
+        let mut exp_literals: Vec<String> = vec![];
+
+        // For now, we consume everything until we reach a semicolon
+        // This means we're skipping expressions
+        while !self.current_token_is_of_type(TokenType::Semicolon) {
+            exp_literals.push(self.peek_token.literal.to_owned());
+            self.next_token();
+
+            if self.current_token_is_of_type(TokenType::EOF) {
+                return Err(eyre::eyre!("Expected ';', found end of file (EOF)"));
+            }
+        }
+
+        let exp_literal = exp_literals
+            .iter()
+            .filter(|&s| s != ";")
+            .map(|s| s.clone())
+            .collect::<Vec<String>>()
+            .join(" ");
+
+        let exp_token = Token {
+            r#type: TokenType::Illegal,
+            literal: exp_literal,
+        };
+
+        let expression = ast::Expression {
+            tokens: vec![exp_token],
+        };
+        let statement = ast::ReturnStatement {
+            token: Token {
+                r#type: TokenType::Return,
+                literal: "return".to_owned(),
+            },
+            value: RefCell::new(expression),
+        };
+
+        Ok(ast::Statement::Return(statement))
     }
 
     fn current_token_is_of_type(&self, t: TokenType) -> bool {

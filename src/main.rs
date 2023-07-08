@@ -17,7 +17,6 @@ fn repl() -> eyre::Result<()> {
             eprintln!("Exiting..");
             break;
         }
-
         let mut lexer = core::lexer::Lexer::new(&user_input)?;
 
         loop {
